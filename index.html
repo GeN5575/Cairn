@@ -20,7 +20,7 @@ body { margin: 0; }
   --ink-dim: #c5b9cf;
   --sun: #ffb067;
   --coral: #ff7a6b;
-  --panel: rgba(22, 18, 34, 0.78);
+  --panel: rgba(22, 18, 34, 0.92);
   --display: "Bricolage Grotesque", "Trebuchet MS", system-ui, sans-serif;
   --mono: "DM Mono", ui-monospace, Menlo, monospace;
   color-scheme: dark;
@@ -49,7 +49,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 .modelbl.hard { color: #ff9a8c; }
 .bonus { margin-top: 6px; display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px; border-radius: 999px; font-family: var(--mono); font-size: 0.9375rem; font-weight: 600; color: #3a2505; background: linear-gradient(90deg,#ffe28a,#f5b942); box-shadow: 0 0 14px rgba(255,200,90,0.6); animation: bpulse 1s ease-in-out infinite; }
 .bonus.low { animation: blink 0.4s steps(2) infinite; }
-@keyframes bpulse { 50% { box-shadow: 0 0 22px rgba(255,210,100,0.95); } }
+@keyframes bpulse { 50% { transform: scale(1.06); } }
 .best { font-family: var(--mono); font-size: 0.8125rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-dim); padding-top: 8px; text-align: right; }
 .best b { display: block; font-size: 1.25rem; color: var(--ink); font-weight: 500; letter-spacing: 0; }
 .best .gear {
@@ -98,7 +98,6 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   max-width: 420px; margin-inline: auto;
   background: var(--panel); border-radius: 20px; padding: 22px 20px 20px;
   display: flex; flex-direction: column; gap: 10px; text-align: center;
-  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
 }
 #over { transition: opacity 1s ease 0.5s; }
 #over.pre { opacity: 0; }
@@ -212,7 +211,7 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
 .stats span { display: flex; flex-direction: column; align-items: center; font-family: var(--mono); font-size: 0.6875rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-dim); }
 .stats b { font-family: inherit; font-size: 1.25rem; color: var(--ink); font-weight: 500; letter-spacing: 0; }
 .overlay p.rec { color: var(--sun); font-weight: 800; font-size: 1.125rem; animation: recp 1.1s ease-in-out infinite; }
-@keyframes recp { 50% { transform: scale(1.06); text-shadow: 0 0 14px rgba(255, 190, 90, 0.7); } }
+@keyframes recp { 50% { transform: scale(1.06); } }
 @media (prefers-reduced-motion: reduce) {
   .scrim, .scrim > .card, #start, #start > *, .combo.pop, .overlay p.rec { animation: none; }
   button { transition: none; }
@@ -246,11 +245,11 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
 .evb small { display: block; margin-top: 3px; font-size: 0.9375rem; font-weight: 600; color: var(--ink); white-space: normal; }
 .evb.good { color: #b6f5c9; border-color: #6fd69a; }
 .evb.bad { color: #ffb4a8; border-color: #ff7a66; animation: evpulse 0.9s ease-in-out infinite; }
-@keyframes evpulse { 50% { box-shadow: 0 0 0 4px rgba(255, 122, 102, 0.25), 0 6px 20px rgba(0, 0, 0, 0.35); } }
+@keyframes evpulse { 50% { opacity: 0.82; } }
 .evb.soft { color: var(--ink); font-size: 1rem; padding: 6px 14px; border-color: rgba(255, 255, 255, 0.25); }
 #again { font-size: 1.375rem; padding: 18px 20px; }
 #over.ready #again { animation: glow 1.4s ease-in-out infinite; }
-@keyframes glow { 50% { box-shadow: 0 0 0 5px rgba(255, 176, 103, 0.28), 0 0 22px rgba(255, 176, 103, 0.45); } }
+@keyframes glow { 50% { transform: scale(1.03); } }
 .ghost.sm { margin: 0; padding: 10px 14px; font-size: 0.8125rem; border-radius: 12px; }
 .card .note { margin: 0 0 6px; color: var(--ink-dim); font-size: 0.875rem; line-height: 1.4; }
 .card textarea {
@@ -359,6 +358,7 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
     <div class="row"><span>Son</span><button class="sw" type="button" role="switch" data-k="sound" aria-checked="true">Activé</button></div>
     <div class="row"><span>Musique</span><button class="sw" type="button" role="switch" data-k="music" aria-checked="true">Activée</button></div>
     <div class="row"><span>Musique dynamique</span><button class="sw" type="button" role="switch" data-k="dyn" aria-checked="true">Activée</button></div>
+    <div class="row"><span>Mode léger</span><button class="sw" type="button" role="switch" data-k="lite" aria-checked="false">Coupé</button></div>
     <div class="row"><span>Vibrations</span><button class="sw" type="button" role="switch" data-k="vib" aria-checked="true">Activées</button></div>
     <div class="row"><span>Secousses</span><button class="sw" type="button" role="switch" data-k="shake" aria-checked="true">Activées</button></div>
     <div class="row"><span>Sauvegarde</span><button class="ghost sm" id="openSave" type="button">Ouvrir</button></div>
@@ -411,8 +411,19 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
   var wind = { phase: 'idle', t: 4, dir: 1, amp: 0, env: 0, dur: 2.4 };
 
   // ---- saved data ----
-  var cfg = { sound: true, music: true, dyn: true, vib: true, shake: true };
+  var cfg = { sound: true, music: true, dyn: true, vib: true, shake: true, lite: false };
   try { var sv = JSON.parse(localStorage.getItem('cairn-settings') || '{}'); for (var kk in cfg) if (typeof sv[kk] === 'boolean') cfg[kk] = sv[kk]; } catch (e) {}
+  var autoQ = 0, Q = cfg.lite ? 2 : 0, perfAcc = 0, perfN = 0, perfSkip = 120;
+  function setQ() { var nq = cfg.lite ? 2 : autoQ; if (nq !== Q) { Q = nq; resize(); } }
+  // frame-time watchdog: if the phone can't keep up, lower the resolution and the effects (never goes back up)
+  function perfTick(ms) {
+    if (perfSkip > 0) { perfSkip--; return; }
+    if (ms > 120 || document.hidden) return;
+    perfAcc += ms; perfN++;
+    if (perfN >= 90) { var avg = perfAcc / perfN; perfAcc = perfN = 0; if (avg > 23 && autoQ < 2) { autoQ++; setQ(); perfSkip = 60; } }
+  }
+  function setText(el, v) { v = String(v); if (el._v !== v) { el._v = v; el.textContent = v; } }
+  function setCls(el, v) { if (el._c !== v) { el._c = v; el.className = v; } }
   function saveCfg() { try { localStorage.setItem('cairn-settings', JSON.stringify(cfg)); } catch (e) {} }
   var scores = { classic: { best: 0, last: null }, hard: { best: 0, last: null }, time: { best: 0, last: null } };
   try {
@@ -811,7 +822,8 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
   for (var w = 0; w < 16; w++) streaks.push({ x: Math.random(), y: Math.random(), l: 18 + Math.random() * 30 });
 
   function resize() {
-    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    dpr = Math.min(window.devicePixelRatio || 1, Q === 0 ? 2 : Q === 1 ? 1.5 : 1);
+    sunCache = null;
     var r = cv.getBoundingClientRect();
     W = r.width; H = r.height;
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
@@ -883,7 +895,7 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
   function showBonus() {
     if (!elBonus) { elBonus = $('bonus'); elBonusT = $('bonusT'); }
     elBonus.hidden = !(bonusT > 0 && state === 'play');
-    if (bonusT > 0) { elBonusT.textContent = Math.ceil(bonusT); elBonus.classList.toggle('low', bonusT < 4); }
+    if (bonusT > 0) { setText(elBonusT, Math.ceil(bonusT)); elBonus.classList.toggle('low', bonusT < 4); }
   }
 
   function spawn() {
@@ -928,7 +940,7 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
         life: life, max: life, r: 1.5 + Math.random() * 2.5, gold: gold
       });
     }
-    if (dust.length > 150) dust.splice(0, dust.length - 150);
+    var dcap = Q === 2 ? 60 : 150; if (dust.length > dcap) dust.splice(0, dust.length - dcap);
   }
 
   // ---- events (hard mode and time attack) ----
@@ -944,8 +956,8 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
   }
   function evBusy() { return fogT > 0 || !!surge || tfreeze > 0 || speedMulT > 0 || rainT > 0 || wind.phase !== 'idle' || !!pendStone || evQ.length > 0; }
   function timerUI() {
-    elTimerN.textContent = Math.max(0, tleft).toFixed(1);
-    elTimer.className = 'timer' + (tfreeze > 0 ? ' frozen' : tleft < 8 ? ' low' : '');
+    setText(elTimerN, Math.max(0, tleft).toFixed(1));
+    setCls(elTimer, 'timer' + (tfreeze > 0 ? ' frozen' : tleft < 8 ? ' low' : ''));
   }
   function timePop(txt, bad) {
     elTpop.textContent = txt; elTpop.className = 'tpop' + (bad ? ' bad' : ''); void elTpop.offsetWidth; elTpop.classList.add('go');
@@ -1460,7 +1472,7 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
 
   // ---- options menu ----
   var sws = elSet.querySelectorAll('.sw');
-  var LAB = { sound: ['Activé', 'Coupé'], music: ['Activée', 'Coupée'], dyn: ['Activée', 'Coupée'], vib: ['Activées', 'Coupées'], shake: ['Activées', 'Coupées'] };
+  var LAB = { lite: ['Activé', 'Coupé'], sound: ['Activé', 'Coupé'], music: ['Activée', 'Coupée'], dyn: ['Activée', 'Coupée'], vib: ['Activées', 'Coupées'], shake: ['Activées', 'Coupées'] };
   function paintSw() {
     for (var i = 0; i < sws.length; i++) {
       var k = sws[i].getAttribute('data-k'), on = cfg[k];
@@ -1471,6 +1483,7 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
   function setCfg(k, v) {
     cfg[k] = v; saveCfg(); paintSw();
     if (k === 'music') { if (v) ensureAudio(); else stopMusic(); }
+    if (k === 'lite') setQ();
     if (k === 'vib' && v) buzz(30);
   }
   for (var si2 = 0; si2 < sws.length; si2++) {
@@ -1606,7 +1619,7 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
   var elTP = $('themePanel'), elTL = $('themeList'), elTT = $('themeTitle'), elTB = $('themeBal'), elTBn = $('themeBalN');
   var shopMode = true, pendingBuy = null, pendTimer = null;
   function owned(id) { return shop.owned.indexOf(id) >= 0; }
-  var prevs = [], prevRaf = 0;
+  var prevs = [], prevRaf = 0, prevOdd = false;
   function drawPreview(cvp, t) {
     var pw = cvp.clientWidth || 300, ph = 84, d = Math.min(window.devicePixelRatio || 1, 2);
     cvp.width = Math.round(pw * d); cvp.height = Math.round(ph * d);
@@ -1655,7 +1668,8 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
   }
   function prevLoop(now) {
     if (elTP.hidden) { prevRaf = 0; return; }
-    for (var i = 0; i < prevs.length; i++) paintPrev(prevs[i], now / 1000);
+    prevOdd = !prevOdd;
+    if (Q === 0 || (Q === 1 && prevOdd)) for (var i = 0; i < prevs.length; i++) paintPrev(prevs[i], now / 1000);
     prevRaf = requestAnimationFrame(prevLoop);
   }
   function startPrev() { if (!prevRaf && !reduce) prevRaf = requestAnimationFrame(prevLoop); }
@@ -1763,11 +1777,12 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
     ctx.save(); ctx.globalAlpha *= stoneA;
     if (rot) { ctx.translate(x + w / 2, y + h / 2); ctx.rotate(rot); ctx.translate(-(x + w / 2), -(y + h / 2)); }
     if (fx) {
-      ctx.shadowColor = fx.glow; ctx.shadowBlur = 12 + 6 * Math.sin(tm * 6);
+      ctx.save(); ctx.globalAlpha *= 0.3 + 0.12 * Math.sin(tm * 6); ctx.fillStyle = fx.glow;   // halo without shadowBlur
+      ctx.beginPath(); ctx.roundRect(x - 5, y - 4, w + 10, h + 6, r + 5); ctx.fill(); ctx.restore();
       var gg = ctx.createLinearGradient(0, y, 0, y + h);
       gg.addColorStop(0, fx.c[0]); gg.addColorStop(0.5, fx.c[1]); gg.addColorStop(1, fx.c[2]);
       ctx.fillStyle = gg; bodyPath(x, y, w, r, kd); ctx.fill();
-      ctx.shadowBlur = 0; c = { base: '', hi: fx.hi };
+      c = { base: '', hi: fx.hi };
       if (fx.stripes) {   // hazard stripes on the trap stone
         ctx.save(); bodyPath(x, y, w, r, kd); ctx.clip();
         ctx.strokeStyle = 'rgba(40,0,0,0.35)'; ctx.lineWidth = 5;
@@ -1789,7 +1804,7 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
 
 
   function drawAurora(a) {
-    for (var b = 0; b < 3; b++) {
+    for (var b = 0; b < (Q ? 1 : 3); b++) {
       var y0 = H * (0.16 + b * 0.075), c = b === 1 ? '120,200,255' : '110,255,200';
       var g = ctx.createLinearGradient(0, y0 - 30, 0, y0 + 120);
       g.addColorStop(0, 'rgba(' + c + ',0)'); g.addColorStop(0.35, 'rgba(' + c + ',' + a + ')'); g.addColorStop(1, 'rgba(' + c + ',0)');
@@ -1816,16 +1831,17 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
     ctx.setLineDash([10, 16]); ctx.lineDashOffset = -tm * 34; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,255,255,0.5)';
     ctx.beginPath(); ctx.moveTo(0, ty + 2); waveTop(ty + 2, 3, 0.04, 2); ctx.stroke();
     ctx.setLineDash([]); ctx.fillStyle = 'rgba(255,255,255,0.35)';
-    for (var fb = 0; fb < 16; fb++) {
+    for (var fb = 0; fb < (Q === 2 ? 0 : 16); fb++) {
       var fx = ((fb * 61 + tm * (14 + (fb % 3) * 9)) % (W + 40)) - 20, fy = ty + 8 + (fb * 37) % 22 + Math.sin(tm * 2 + fb) * 2;
       ctx.beginPath(); ctx.arc(fx, fy, 1.2 + (fb % 3) * 0.7, 0, 7); ctx.fill();
     }
     ctx.restore();
   }
 
-  var last = performance.now();
+  var last = performance.now(), sunCache = null;
   function frame(now) {
-    var dt = Math.min(0.05, (now - last) / 1000); last = now;
+    var rawMs = now - last, dt = Math.min(0.05, rawMs / 1000); last = now;
+    if (state !== 'over') perfTick(rawMs);
     var gdt = dt;
     if (slowT > 0) { slowT -= dt; gdt = dt * 0.35; }
     if (zoomV > 0) zoomV = Math.max(0, zoomV - dt * 3.2);
@@ -1838,10 +1854,14 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
 
     // sun or moon, fixed low on the horizon
     var sn = theme.sun, sxp = W * sn.x, syp = ground - 70 + cam * 0.15, srad = Math.min(sn.r, W * sn.r / 420);
-    if (sn.glow) {
-      var gl = ctx.createRadialGradient(sxp, syp, srad * 0.3, sxp, syp, srad * 2.4);
-      gl.addColorStop(0, 'rgba(255,100,40,0.5)'); gl.addColorStop(1, 'rgba(255,100,40,0)');
-      ctx.fillStyle = gl; ctx.fillRect(sxp - srad * 2.4, syp - srad * 2.4, srad * 4.8, srad * 4.8);
+    if (sn.glow) {   // glow pre-rendered once, then just stamped
+      if (!sunCache || sunCache.r !== srad) {
+        var sc2 = document.createElement('canvas'), sz = Math.ceil(srad * 4.8 * dpr); sc2.width = sc2.height = sz;
+        var g2 = sc2.getContext('2d'), gl = g2.createRadialGradient(sz / 2, sz / 2, sz * 0.0625, sz / 2, sz / 2, sz / 2);
+        gl.addColorStop(0, 'rgba(255,100,40,0.5)'); gl.addColorStop(1, 'rgba(255,100,40,0)');
+        g2.fillStyle = gl; g2.fillRect(0, 0, sz, sz); sunCache = { r: srad, c: sc2 };
+      }
+      ctx.drawImage(sunCache.c, sxp - srad * 2.4, syp - srad * 2.4, srad * 4.8, srad * 4.8);
     }
     ctx.fillStyle = sn.color;
     ctx.beginPath(); ctx.arc(sxp, syp, srad, 0, 7); ctx.fill();
@@ -1856,10 +1876,10 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
     tm += dt;
     var night = Math.max(0, Math.min(0.8, cam / (h * 45)));
     ctx.fillStyle = 'rgba(' + theme.night + ',' + night + ')'; ctx.fillRect(0, 0, W, H);
-    if (theme.aurora) drawAurora(0.1 + night * 0.28);
+    if (theme.aurora && Q < 2) drawAurora(0.1 + night * 0.28);
     if (night > 0.08 || theme.embers) {
       var sa = theme.embers ? Math.max(night, 0.5) : night;
-      for (var si = 0; si < stars.length; si++) {
+      for (var si = 0, nst = Q === 2 ? 30 : stars.length; si < nst; si++) {
         var st = stars[si], sty = theme.embers ? ((st.y - tm * 0.015 * (0.4 + st.r * 0.3)) % 1 + 1) % 1 : st.y;
         ctx.fillStyle = 'rgba(' + theme.star + ',' + (sa * (0.55 + 0.45 * Math.sin(tm * 1.5 + st.p))) + ')';
         ctx.beginPath(); ctx.arc(st.x * W, sty * H, st.r, 0, 7); ctx.fill();
@@ -1889,7 +1909,7 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
         if (shakeT > 0) { shakeT -= dt; addShake(1.2); }
         if (!sdOn && duelT >= 120) { sdOn = true; evBanner('⚡ Mort subite', 2.2, 'bad'); jingle(); }
         var mmn = Math.floor(duelT / 60), ssn = Math.floor(duelT % 60);
-        elTimerN.textContent = mmn + ':' + (ssn < 10 ? '0' : '') + ssn; elTimer.className = 'timer' + (sdOn ? ' low' : '');
+        setText(elTimerN, mmn + ':' + (ssn < 10 ? '0' : '') + ssn); setCls(elTimer, 'timer' + (sdOn ? ' low' : ''));
         updateOpp(dt);
       } else if (mode === 'time') {
         wv = updateWind(gdt);
@@ -1957,7 +1977,7 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
       var jit = shakeT > 0 ? Math.sin(tm * 23) * 6 * Math.min(1, shakeT) : 0;
       stoneA = 1 - 0.82 * fe; stone(cur.x + jit, cur.i * h, cur.w, cur.i, 0, fxOf(cur), cur.k); stoneA = 1;
       if (fe > 0) {
-        for (var cl = 0; cl < 6; cl++) {
+        for (var cl = 0; cl < (Q === 2 ? 3 : 6); cl++) {
           ctx.fillStyle = 'rgba(232,238,250,' + (0.2 * fe) + ')';
           ctx.beginPath(); ctx.ellipse(((tm * 28 * (cl % 3 + 1) + cl * 170) % (W + 320)) - 160, sy(cur.i * h) + h * 0.5 + Math.sin(tm + cl) * 12, 120, 34, 0, 0, 7); ctx.fill();
         }
@@ -2000,7 +2020,7 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
     }
 
     if (windy() && state !== 'idle') {   // wind-blown dust, leaves and ash
-      if (state === 'play' && !paused && wind.phase === 'blow' && leaves.length < 70 && Math.random() < wind.env * dt * 40) {
+      if (state === 'play' && !paused && wind.phase === 'blow' && leaves.length < (Q === 2 ? 25 : 70) && Math.random() < wind.env * dt * 40) {
         leaves.push({ x: wind.dir > 0 ? -10 : W + 10, y: Math.random() * H * 0.85, vx: wind.dir * (160 + Math.random() * 280), vy: (Math.random() - 0.4) * 40, r: Math.random() * 6, vr: (Math.random() - 0.5) * 9, s: 2.5 + Math.random() * 3.5 });
       }
       for (var lf = leaves.length - 1; lf >= 0; lf--) {
