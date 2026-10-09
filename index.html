@@ -260,6 +260,24 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
 .duo2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .duo2 button { margin-top: 0; }
 @media (prefers-reduced-motion: reduce) { .timer.low, .evb.bad, #over.ready #again { animation: none; } }
+/* duel */
+.duo { grid-template-columns: repeat(3, 1fr); }
+.duo .mode-btn { align-items: center; padding: 12px 6px; }
+.mode-btn.duel { background: #9b5cf0; color: #fff; }
+.modelbl.duel { color: #c9a2ff; }
+.duel-on .toast, .duel-on .evb, .duel-on .wind { left: calc(50% - 46px); max-width: calc(100% - 128px); white-space: normal; }
+.duel-on .combo { right: 92px; }
+.oitem { display: flex; gap: 12px; align-items: center; background: #2c2542; border-radius: 16px; padding: 10px 12px; flex: none; }
+.oitem canvas { position: static; inset: auto; width: 72px; height: 72px; flex: none; image-rendering: pixelated; border-radius: 12px; background: #1b1530; }
+.oitem.locked canvas { filter: grayscale(1) brightness(0.55); }
+.oinfo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.oinfo b { font-size: 1.125rem; }
+.olvl { align-self: flex-start; font-family: var(--mono); font-size: 0.6875rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; color: #1b1530; }
+.orew { display: flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 0.8125rem; color: var(--ink-dim); }
+.orew .coin-i { width: 14px; height: 14px; }
+.obtn { margin: 0; padding: 10px 12px; font-size: 0.9375rem; border-radius: 12px; white-space: nowrap; }
+.obtn:disabled { background: #3a3350; color: var(--ink-dim); }
+
 </style>
 
 
@@ -293,8 +311,9 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
   <button class="mode-btn" type="button" data-mode="classic"><b>Classique</b><span>Équilibre pur, vitesse progressive</span></button>
   <button class="mode-btn alt" type="button" data-mode="hard"><b>Difficile</b><span>Vent et marée montante</span></button>
   <div class="duo">
-    <button class="mode-btn teal" type="button" data-mode="time"><b>Chrono</b><span>Contre la montre</span></button>
-    <button class="mode-btn calm" type="button" data-mode="zen"><b>Zen</b><span>Sans pièces</span></button>
+    <button class="mode-btn teal" type="button" data-mode="time"><b>Chrono</b></button>
+    <button class="mode-btn calm" type="button" data-mode="zen"><b>Zen</b></button>
+    <button class="mode-btn duel" type="button" data-mode="duel"><b>Duel</b></button>
   </div>
   <div class="trio">
     <button class="ghost" id="openScores" type="button">Scores</button>
@@ -343,6 +362,7 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
     <div class="row"><span>Vibrations</span><button class="sw" type="button" role="switch" data-k="vib" aria-checked="true">Activées</button></div>
     <div class="row"><span>Secousses</span><button class="sw" type="button" role="switch" data-k="shake" aria-checked="true">Activées</button></div>
     <div class="row"><span>Sauvegarde</span><button class="ghost sm" id="openSave" type="button">Ouvrir</button></div>
+    
     <button id="closeSet" type="button">Fermer</button>
   </div>
 </div>
@@ -358,6 +378,16 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
   </div>
 </div>
 
+<div class="scrim" id="duelPanel" hidden>
+  <div class="card tall" role="dialog" aria-label="Duel">
+    <h2>Duel</h2>
+    <p class="note">Pose bien les pierres d'orage violettes pour envoyer leur malus à l'adversaire. Le premier dont la tour s'effondre perd.</p>
+    <div class="tlist" id="duelList"></div>
+    <button id="closeDuel" type="button">Fermer</button>
+  </div>
+</div>
+
+
 <div class="flash" id="flash"></div>
 <div class="fly" id="fly"></div>
 
@@ -371,6 +401,7 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
   var elStart = $('start'), elOver = $('over'), elScores = $('scoresPanel'), elSet = $('settings');
   var W = 0, H = 0, dpr = 1, h = 28, ground = 0;
   var stones, pieces, cur, score = 0, cam = 0, camT = 0, speed = 0, combo = 0, state = 'idle', overAt = 0, toastT = 0, rings = [];
+  var duelOpp = 'pipo', opp = null, duelT = 0, sdOn = false, stormAt = 8, fastN = 0, narrowN = 0, shakeT = 0, fogMax = 5.5, orbs = [];
   var wob = null, evAt = 6, evQ = [], surge = null, fogT = 0, tfreeze = 0, speedMulT = 0, rainT = 0, rainP = [], pendStone = null, paceCur = 1, paceTarget = 1, paceAt = 8, tleft = 30, evbT = null, stoneA = 1;
   var slowT = 0, zoomV = 0, perfects = 0, bestCombo = 0, collapse = null, leaves = [], cdTimer = null, elCombo = null, cuTok = 0;
   var gold = { at: 10 }, bonusT = 0, bonusCoins = 0, elBonus = null, elBonusT = null;
@@ -460,6 +491,54 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
       roots: [48, 45, 41, 43, 48, 45, 41, 43], q: 'MmMMMmMM',
       bass: '0 . . .  7 . . .', bd: 3.5,
       arp: [1, 1, 1, 1, 1, 1, 1, 1], arpW: 'tri', arpV: 0.02, arpPat: '0 . 1 .  2 . 1 .'
+    },
+    // Duel contre Pipo : fa majeur sautillant, onde carrée, basse « oum-pa », petites percussions de cirque magique
+    duel_pipo: {
+      step: 60 / 156 / 4, bar: 16, leadW: 'p50', leadV: 0.045,
+      lead: 'F5 . A5 .  C6 . A5 .  F5 . . C5  F5 . A5 .  ' +
+            'G5 . E5 .  C5 . E5 .  G5 . . E5  G5 . C6 .  ' +
+            'A5 . F5 .  D5 . F5 .  A5 . . F5  A5 . D6 .  ' +
+            'A#5 . . A5  G5 . F5 .  D5 . F5 .  G5 . . .  ' +
+            'C6 . C6 .  A5 . F5 .  A5 . C6 .  F6 . . .  ' +
+            'E6 . D6 .  C6 . G5 .  E5 . G5 .  C6 . . .  ' +
+            'D6 . C6 .  A#5 . A5 .  G5 . F5 .  D5 . E5 .  ' +
+            'F5 . . .  G5 . . .  C5 . E5 .  G5 . . .  ',
+      roots: [41, 36, 38, 46, 41, 36, 46, 36], q: 'MMmMMMMM',
+      bass: '0 . 7 .  12 . 7 .  0 . 7 .  12 . 7 .', bd: 0.9,
+      arp: [0, 0, 0, 0, 1, 1, 1, 1], arpW: 'p12', arpV: 0.02, arpPat: '0 . 1 .  2 . 1 .  0 . 1 .  2 . 3 .',
+      dr: ['K..HS..HK.K.S..H', 'K..HS..HK.K.S..H', 'K..HS..HK.K.S..H', 'K..HS..HK.K.S..H', 'K..HS..HK.K.S..H', 'K..HS..HK.K.S..H', 'K..HS..HK.K.S..H', 'K..HS..HK.K.SSSS']
+    },
+    // Duel contre Marin : chant de marins en ré mineur, mesure à 12/8 qui tangue, accordéon en arpèges
+    duel_marin: {
+      step: 0.2, bar: 12, leadW: 'p25', leadV: 0.06,
+      lead: 'D5 . . D5 . E5 F5 . . A5 . .  ' +
+            'G5 . F5 E5 . D5 C5 . . A4 . .  ' +
+            'A#4 . . A#4 . C5 D5 . . G5 . .  ' +
+            'F5 . E5 D5 . . A4 . . . . .  ' +
+            'C5 . . F5 . G5 A5 . . C6 . .  ' +
+            'A#5 . A5 G5 . . E5 . . C5 . .  ' +
+            'D5 . F5 A5 . G5 F5 . E5 D5 . .  ' +
+            'C#5 . . E5 . . A5 . . . . .  ',
+      roots: [38, 38, 43, 38, 41, 36, 38, 45], q: 'mmmmMMmM',
+      bass: '0 . . 7 . .  0 . . 7 . .', bd: 2.5,
+      arp: [1, 1, 1, 1, 1, 1, 1, 1], arpW: 'tri', arpV: 0.022, arpPat: '0 . . 1 . .  2 . . 1 . .',
+      dr: ['K..H..S..H..', 'K..H..S..H..', 'K..H..S..H..', 'K..H..S..H..', 'K..H..S..H..', 'K..H..S..H..', 'K..H..S..H..', 'K..H..S.SS.S']
+    },
+    // Duel contre La Vigie : mi mineur harmonique, sombre et martial, impulsions 12,5 % et tambours lourds
+    duel_vigie: {
+      step: 60 / 132 / 4, bar: 16, leadW: 'p12', leadV: 0.06,
+      lead: 'E5 . . B4  E5 . G5 .  F#5 . E5 .  B4 . . .  ' +
+            'C5 . . G4  C5 . E5 .  D#5 . E5 .  G5 . . .  ' +
+            'A5 . . E5  A5 . C6 .  B5 . A5 .  E5 . . .  ' +
+            'D#5 . F#5 .  B5 . . A5  G5 . F#5 .  D#5 . . .  ' +
+            'E6 . . B5  G5 . . E5  B5 . . G5  E5 . . .  ' +
+            'F5 . . C5  A5 . . F5  C6 . . A5  F5 . E5 .  ' +
+            'A5 . C6 .  E6 . D6 C6  B5 . A5 .  G5 . F#5 .  ' +
+            'D#5 . . .  F#5 . . .  B5 . A5 G5  F#5 . D#5 .  ',
+      roots: [40, 36, 45, 35, 40, 41, 45, 35], q: 'mMmMmMmM',
+      bass: '0 0 . 0  12 . 0 0  0 0 . 0  12 . 7 .', bd: 0.8,
+      arp: [1, 1, 1, 1, 1, 1, 1, 1], arpW: 'p25', arpV: 0.022, arpPat: '0 1 2 1  0 1 2 3  0 1 2 1  0 1 2 3',
+      dr: ['K.K.S..KK.K.S...', 'K.K.S..KK.K.S...', 'K.K.S..KK.K.S...', 'K.K.S..KK.K.S...', 'K.K.S..KK.K.S...', 'K.K.S..KK.K.S...', 'K.K.S..KK.K.S...', 'K.K.S..KK.KSSSSS']
     },
     menu: {
       step: 0.26, bar: 8, leadW: 'p25', leadV: 0.04,
@@ -622,7 +701,7 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
   function updateMix() {
     var nm2 = MIX0;
     if (cfg.dyn && state === 'play' && !paused && mode !== 'zen') {
-      var danger = (mode === 'hard' && stones.length * h - tide < h * 2.5) || (mode === 'time' && tleft < 6 && tfreeze <= 0) || !!(cur && cur.fx === 'trap');
+      var danger = (mode === 'duel' && (sdOn || stones[stones.length - 1].w < Math.min(W * 0.52, 240) * 0.3)) || (mode === 'hard' && stones.length * h - tide < h * 2.5) || (mode === 'time' && tleft < 6 && tfreeze <= 0) || !!(cur && cur.fx === 'trap');
       var tp = 1 + Math.min(0.08, score * 0.0016) + (danger ? 0.06 : 0) + (speedMulT > 0 ? 0.08 : 0);
       if (tfreeze > 0) tp *= 0.85;
       nm2 = {
@@ -743,7 +822,8 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
 
   function color(i) { return stoneColor(theme, i); }
 
-  function baseSpeed() { return W * (mode === 'hard' ? 0.36 : mode === 'time' ? 0.34 : mode === 'zen' ? 0.22 : 0.3); }
+  function baseSpeed() { return W * (mode === 'hard' ? 0.36 : mode === 'time' ? 0.34 : mode === 'zen' ? 0.22 : mode === 'duel' ? 0.32 : 0.3); }
+  function windy() { return mode === 'hard' || mode === 'time' || mode === 'duel'; }
 
   function idleStones() {
     var bw = Math.min(W * 0.52, 240);
@@ -781,7 +861,7 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
   }
 
   function windUI() {
-    if ((mode !== 'hard' && mode !== 'time') || state !== 'play' || wind.phase === 'idle') { elWind.hidden = true; return; }
+    if (!windy() || state !== 'play' || wind.phase === 'idle') { elWind.hidden = true; return; }
     elWind.hidden = false;
     elWind.className = 'wind ' + (wind.phase === 'warn' ? 'warn' : 'blow');
     elWind.textContent = wind.flip ? '⇄ vent changeant' : wind.dir < 0 ? '← ← vent' : 'vent → →';
@@ -795,6 +875,7 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
     wind = { phase: 'idle', t: 4, dir: 1, amp: 0, env: 0, dur: 2.4 };
     gold = { at: 10 }; bonusT = 0; bonusCoins = 0; showBonus();
     perfects = 0; bestCombo = 0; collapse = null; leaves = []; slowT = 0; zoomV = 0; cEl().hidden = true;
+    duelT = 0; sdOn = false; stormAt = 6 + Math.floor(Math.random() * 4); fastN = 0; narrowN = 0; shakeT = 0; orbs = []; opp = mode === 'duel' ? newOpp(duelOpp) : null;
     clearEvents(); rainP = []; paceCur = paceTarget = 1; paceAt = 8; tleft = 30; evAt = 6 + Math.floor(Math.random() * 4); timerUI();
     spawn();
     elScore.textContent = '0';
@@ -811,6 +892,11 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
     var goldNext = mode === 'hard' && bonusT <= 0 && stones.length >= gold.at;
     cur = { w: w, i: stones.length, dir: dir, x: dir > 0 ? -w * 0.6 : W - w * 0.4, k: kind, mult: mult };
     // golden stone: hard mode only, from the 10th stone, never while a bonus is running
+    if (mode === 'duel') {
+      if (narrowN > 0) { narrowN--; cur.w = Math.max(20, cur.w * 0.65); cur.x = dir > 0 ? -cur.w * 0.6 : W - cur.w * 0.4; }
+      if (fastN > 0) { fastN--; cur.mult = 1.7; }
+      if (stones.length >= stormAt) { cur.fx = 'storm'; cur.mal = pickMalus('opp'); stormAt = stones.length + 6 + Math.floor(Math.random() * 5); }
+    }
     if (goldNext) { cur.gold = true; evBanner('★ Pierre dorée', 2.2, 'good', 'Pose-la bien : pièces ×2 pendant 15 s'); }
     if (pendStone) { cur.fx = pendStone; if (pendStone === 'timed') cur.timed = 5.5; pendStone = null; }
   }
@@ -891,7 +977,7 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
         if (amt < h * 0.5) amt = Math.min(h * 0.8, Math.max(0, stones.length * h - tide - h));
         surge = { left: amt, rate: Math.max(h * 2.4, amt / 1.1) }; evBanner('Vague !', 1.2, 'bad'); addShake(5); windSfx(1.1); thud(1); buzz([40, 30, 80]);
       } });
-    } else if (k === 'fog') { fogT = 5.5; evBanner('Brouillard', 2.2, 'bad', 'La pierre devient difficile à voir'); windSfx(1.6); }
+    } else if (k === 'fog') { fogT = fogMax = 5.5; evBanner('Brouillard', 2.2, 'bad', 'La pierre devient difficile à voir'); windSfx(1.6); }
     else if (k === 'flip') { startGust(true); evBanner('⇄ Vent changeant', 2.2, 'bad', 'Il va s’inverser en pleine rafale'); }
     else if (k === 'gust') { startGust(false); }
     else if (k === 'timed') { pendStone = 'timed'; evBanner('⏱ Pierre chrono', 2.4, 'good', 'Pose la pierre bleue en 5 s : +6 s'); arpeggio([88, 91, 95], 0.06); }
@@ -918,10 +1004,10 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
       combo++; perfects++; bestCombo = Math.max(bestCombo, combo); slowT = 0.32; zoomV = 1;
       var nw = cur.w;
       if (combo >= 3) nw = Math.min(cur.w + W * 0.025, baseW);
-      stones.push({ x: top.x + top.w / 2 - nw / 2, w: nw, i: cur.i, gold: cur.gold, fx: cur.fx, k: cur.k });
+      stones.push({ x: top.x + top.w / 2 - nw / 2, w: nw, i: cur.i, gold: cur.gold, fx: cur.fx, k: cur.k, mal: cur.mal });
       rings.push({ x: top.x + top.w / 2, wy: cur.i * h + h / 2, t: 0 });
       toast('Parfait'); showCombo();
-      if (cur.w <= baseW * 0.5 && mode !== 'zen') { bonusCoins += 2; toast('Risque ! +2 pièces', 'good'); }   // a perfect on a narrow stone pays
+      if (cur.w <= baseW * 0.5 && mode !== 'zen' && mode !== 'duel') { bonusCoins += 2; toast('Risque ! +2 pièces', 'good'); }   // a perfect on a narrow stone pays
       if (combo >= 5) setTimeout(function () { beep(820 + Math.min(combo, 10) * 60, 0.1); }, 70);
       if (mode === 'hard') tide = Math.max(-h * 1.5, tide - h * 0.7);
       beep(520 + Math.min(combo, 8) * 60, 0.18); buzz(15);
@@ -931,7 +1017,7 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
       combo = 0;
       if (cur.x < top.x - 0.5) pieces.push({ x: cur.x, w: l - cur.x, wy: cur.i * h, vy: 0, rot: 0, vr: -0.6, i: cur.i });
       if (cur.x + cur.w > top.x + top.w + 0.5) pieces.push({ x: r, w: cur.x + cur.w - r, wy: cur.i * h, vy: 0, rot: 0, vr: 0.6, i: cur.i });
-      stones.push({ x: l, w: ov, i: cur.i, gold: cur.gold, fx: cur.fx, k: cur.k });
+      stones.push({ x: l, w: ov, i: cur.i, gold: cur.gold, fx: cur.fx, k: cur.k, mal: cur.mal });
       thud(1); if (cutW > 1) scrape(cutW); addShake(Math.min(6, 1.5 + cutW / W * 14));
       puff(l + ov / 2, cur.i * h, 6, ov, false);
       if (cutW > 1) puff(cur.x < top.x ? l : r, cur.i * h, 8, 10, false);
@@ -942,6 +1028,10 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
       wob = { t: 0.9, fall: Math.random() < pf, dir: cur.x < top.x ? -1 : 1 };
       wobSfx(); toast('Ça vacille…', 'bad'); buzz([20, 30, 20, 30]);
       if (wob.fall) { cur = null; return; }
+    }
+    if (cur.fx === 'storm') {      // duel: a storm stone placed well sends its curse to the opponent
+      if (dx < W * 0.028) playerSend(cur.mal, perfect);
+      else toast('Orage perdu', 'bad');
     }
     if (cur.gold) {
       if (dx < W * 0.028) {
@@ -966,7 +1056,7 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
     }
     score++; elScore.textContent = score; showBonus();
     if (score % 10 === 0) { toast('Palier ' + score); buzz(40); jingle(); }
-    var inc = mode === 'zen' ? 0.006 : 0.013, cap = mode === 'hard' ? 1.0 : mode === 'zen' ? 0.5 : 0.95;
+    var inc = mode === 'zen' ? 0.006 : mode === 'duel' ? 0.010 : 0.013, cap = mode === 'hard' ? 1.0 : mode === 'zen' ? 0.5 : mode === 'duel' ? 0.9 : 0.95;
     speed = Math.min(W * cap, baseSpeed() + score * W * inc); // plafond vers 50 pierres
     if ((mode === 'hard' || mode === 'time') && score >= evAt) {
       if (evBusy()) evAt = score + 1;
@@ -976,7 +1066,238 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
     if (wob) cur = null; else spawn();
   }
 
+  // ---- duel: opponents, bot simulation, curses ----
+  var OPPS = {
+    pipo: { name: 'Pipo', lvl: 'Facile', reward: 30, s0: 0.026, sg: 0.0012, react: [0.35, 0.8], use: 0.45, hold: false, resist: 1, next: 'marin', col: '#8fd6a8' },
+    marin: { name: 'Marin', lvl: 'Moyen', reward: 60, s0: 0.012, sg: 0.0006, react: [0.25, 0.5], use: 0.85, hold: false, resist: 0.85, next: 'vigie', col: '#ffb067' },
+    vigie: { name: 'La Vigie', lvl: 'Difficile', reward: 100, s0: 0.0065, sg: 0.0003, react: [0.15, 0.35], use: 1, hold: true, resist: 0.65, next: null, col: '#ff7a66' }
+  };
+  var OPP_ORDER = ['pipo', 'marin', 'vigie'];
+  var PORTRAITS = {
+    pipo: { pal: { k: '#1b1530', w: '#f4f4f0', g: '#b8c0cc', G: '#7a8494', y: '#f5c542', o: '#e5823a', h: '#6b4fa0', H: '#4a3578', s: '#ff8f6e', e: '#1b1530', c: '#9fe3ff' }, rows: [
+      "...........kk...........", "..........khHk..........", ".........khhHk..........", "........khhhHk..........", ".......khhshhHk.........", "......khhsssHHk.........",
+      ".....khhhhshhHHk........", "....khhchhhhhHHk........", "..kkkkkkkkkkkkkkkkk.....", "....kwwwwwwwwwwwk.......", "....kwwwwwwwwwwwwk......", "...kwwkkwwwwwwwwwk......",
+      "...kwkekwwwwwwwwwk......", "...kwkkwwwwwwwwwwk......", ".kkyyykwwwwwwwwwk.......", "kyyyyyykwwwwwwwk........", ".koooyykwwwwwwwk........", "..kkkkkwwwwwwwwgk.......",
+      "....kwwwwwwwwgggGk......", "...kwwwwwwwwggGGGGk.....", "...kwwwwwwwgGGGGGGk.....", "..kwwwwwwwgGGGGGGGGk....", "..kwwwwwwwgGGGGGGGGk....", "..kkkkkkkkkkkkkkkkkk...."] },
+    marin: { pal: { k: '#1b1530', Y: '#f2c230', D: '#b8861a', f: '#7fc8a9', F: '#4f9a7d', e: '#1b1530', n: '#2e6b56', a: '#3f8f4a', A: '#2a6533', c: '#ff8f6e', C: '#d9604a' }, rows: [
+      ".......kkkkkkkk.........", ".....kkYYYYYYYYkk.......", "....kYYYYYYYYYYYYk......", "...kYYYYYYYYYYYYYYk.....", "...kYYDkkkkkkkkDYYk.....", "..kYYDkffffffffkDYk.....",
+      "..kYDkffffffffffkDk.....", ".kFkDkfkkffffkkfkDkFk...", ".kFFkkfkeffffekfkkFFk...", "..kFFkffffffffffkFFk....", "...kkkfffffnffffkkk.....", "....kaaffkkkkffaak......",
+      "...kaaaaaaaaaaaaaak.....", "..kaaAaaaAaaaAaaaak.....", "..kaAaaAaaaAaaaAaak.....", "..kYkaAaaAaaAaaAakYk....", ".kYYYkaaAaaAaaaakYYYk...", ".kYYYYkkaaaaaakkYYYYk...",
+      "kYYYYYYYkkkkkkYYYYYYYk..", "kYYDYYYYYYYYYYYYYDYYYk.c", "kYYDYYYYYYYYYYYYYDYYYkcC", "kYYDYYYYYYYYYYYYYDYYYkCk", "kYYDYYYYYYYYYYYYYDYYkCk.", "kkkkkkkkkkkkkkkkkkkkkck."] },
+    vigie: { pal: { k: '#1b1530', N: '#24305e', M: '#3a4a8a', w: '#eef4ff', W: '#c9d6ea', s: '#e9c2a6', S: '#c99a7e', e: '#7ff0ff', E: '#2fc4e0', l: '#fff3a0', L: '#ffd34d', b: '#8a6a3a' }, rows: [
+      "........kkkkkkk.........", "......kkNNNNNNNkk.......", ".....kNNMMMMMMMNNk......", "....kNNMwwwwwwwMNNk.....", "...kNNMwwwWwwWwwMNNk....", "...kNMwwWkkkkkWwwMNk....",
+      "..kNNMwWksssssskWwMNNk..", "..kNMwwkssssssssWwwMNk..", "..kNMwWkskeEsseEkWwMNk..", "..kNMwWksssssSssskWMNk..", "..kNMwwkssSkkSsskwwMNk..", "..kNMwwWkssssssskWwMNk..",
+      "..kNMwwwWkkkkkkkWwwMNk..", "..kNNMwwwWwwwwWwwwMNNk..", "...kNMMwwwwWwwwwwMMNk...", "..kNNNMMMMMMMMMMMMNNNk..", ".kNNNNNMMMMMMMMMMNNNNNk.", "kNNNNNNNMMMMMMMMNNNNbkk.",
+      "kNNMNNNNNNMMNNNNNNkbLLk.", "kNNMNNNNNNNNNNNNNkbLllLk", "kNNMNNNNNNNNNNNNNkbLllLk", "kNNMNNNNNNNNNNNNNkbLLLLk", "kNNMNNNNNNNNNNNNNNkbbbk.", "kkkkkkkkkkkkkkkkkkkkkk.."] }
+  };
+  var portraitCache = {};
+  function portrait(id, sc) {
+    var key = id + sc; if (portraitCache[key]) return portraitCache[key];
+    var P = PORTRAITS[id], c = document.createElement('canvas'); c.width = 24 * sc; c.height = 24 * sc;
+    var g = c.getContext('2d');
+    P.rows.forEach(function (r, y) { for (var x = 0; x < r.length; x++) { var ch2 = r.charAt(x); if (ch2 !== '.' && P.pal[ch2]) { g.fillStyle = P.pal[ch2]; g.fillRect(x * sc, y * sc, sc, sc); } } });
+    return (portraitCache[key] = c);
+  }
+  var duelP = { beaten: [] };
+  try { var dp0 = JSON.parse(localStorage.getItem('cairn-duel') || 'null'); if (dp0 && Array.isArray(dp0.beaten)) duelP.beaten = dp0.beaten.filter(function (id) { return !!OPPS[id]; }); } catch (e) {}
+  function saveDuel() { try { localStorage.setItem('cairn-duel', JSON.stringify(duelP)); } catch (e) {} }
+  function oppUnlocked(id) { var i = OPP_ORDER.indexOf(id); return i === 0 || duelP.beaten.indexOf(OPP_ORDER[i - 1]) >= 0; }
+  function gauss() { var u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+  function newOpp(id) {
+    return { id: id, w: Math.min(W * 0.52, 240), off: 0, n: 0, combo: 0, wait: 1.2 + Math.random() * 0.6, stormAt: 6 + Math.floor(Math.random() * 4),
+      stack: [], fx: { fog: 0, gust: 0, shake: 0, narrow: 0 }, fastN: 0, held: null, dead: false, fallT: 0, hit: 0 };
+  }
+  function activeOn(who, m) {
+    var inFlight = orbs.some(function (o) { return o.to === who && o.mal === m; });
+    if (inFlight) return true;
+    if (who === 'player') return m === 'fog' ? fogT > 0 : m === 'gust' ? wind.phase !== 'idle' : m === 'fast' ? fastN > 0 : m === 'narrow' ? narrowN > 0 : shakeT > 0;
+    if (!opp) return false;
+    return m === 'fast' ? opp.fastN > 0 : (opp.fx[m] || 0) > 0;
+  }
+  // a curse is never the same as one already running on either side
+  function pickMalus(target) {
+    var all = Object.keys(MAL), ok = all.filter(function (m) { return !activeOn('player', m) && !activeOn('opp', m); });
+    if (!ok.length) ok = all.filter(function (m) { return !activeOn(target, m); });
+    if (!ok.length) ok = all;
+    return ok[Math.floor(Math.random() * ok.length)];
+  }
+  function playerAnchor() { var t = stones[stones.length - 1]; return { x: t.x + t.w / 2, y: sy(t.i * h) + h / 2 }; }
+  function oppAnchor() { return { x: W - 50, y: 160 }; }
+  function launchOrb(to, mal, strong, fn) {
+    var a = to === 'opp' ? playerAnchor() : oppAnchor(), b = to === 'opp' ? oppAnchor() : playerAnchor();
+    orbs.push({ to: to, mal: mal, strong: strong, x0: a.x, y0: a.y, x1: b.x, y1: b.y, t: 0, dur: 0.75, fn: fn });
+    windSfx(0.6);
+  }
+  function playerSend(m, strong) {
+    toast((strong ? 'Orage puissant ! ' : 'Orage envoyé : ') + MAL[m].name, 'good'); buzz([20, 20, 40]);
+    arpeggio(strong ? [79, 84, 88, 91, 96] : [79, 84, 88], 0.05);
+    launchOrb('opp', m, strong, function () {
+      if (!opp || opp.dead) return;
+      var mm2 = (activeOn('player', m) || (m === 'fast' ? opp.fastN > 0 : (opp.fx[m] || 0) > 0)) ? pickMalus('opp') : m;
+      applyToOpp(mm2, strong);
+    });
+  }
+  function applyToOpp(m, strong) {
+    var o = opp; o.hit = 0.6;
+    if (m === 'fog') o.fx.fog = strong ? 7.5 : 5.5;
+    else if (m === 'gust') o.fx.gust = strong ? 4 : 3;
+    else if (m === 'shake') o.fx.shake = strong ? 6 : 4;
+    else if (m === 'fast') o.fastN = strong ? 5 : 3;
+    else if (m === 'narrow') { o.w = Math.max(6, o.w * (strong ? 0.5 : 0.65)); o.fx.narrow = 2; if (o.stack.length) o.stack[o.stack.length - 1].w = o.w; }
+  }
+  function botSend(m, strong) {
+    launchOrb('player', m, strong, function () {
+      if (state !== 'play') return;
+      var mm2 = activeOn('player', m) ? pickMalus('player') : m;
+      applyToPlayer(mm2, strong);
+    });
+  }
+  function applyToPlayer(m, strong) {
+    var O = OPPS[opp.id];
+    evBanner(O.name + ' : ' + MAL[m].name + (strong ? ' ++' : ''), 1.8, 'bad'); buzz([40, 30, 60]); uiTick(240, 0.18, 0.06); addShake(3);
+    if (m === 'fog') { fogT = fogMax = strong ? 7.5 : 5.5; windSfx(1.4); }
+    else if (m === 'gust') { startGust(false); if (strong) wind.amp *= 1.3; }
+    else if (m === 'fast') fastN = strong ? 5 : 3;
+    else if (m === 'narrow') narrowN = strong ? 2 : 1;
+    else if (m === 'shake') shakeT = strong ? 6 : 4;
+  }
+  function updateOpp(dt) {
+    var o = opp, O = OPPS[o.id];
+    if (!o || o.dead) return;
+    for (var fk in o.fx) if (o.fx[fk] > 0) o.fx[fk] -= dt;
+    if (o.hit > 0) o.hit -= dt;
+    if (o.held) {   // La Vigie keeps her curse for the worst moment
+      o.held.t -= dt;
+      var ptw = stones[stones.length - 1].w;
+      if (ptw < Math.min(W * 0.52, 240) * 0.5 || o.held.t <= 0 || sdOn) { botSend(o.held.mal, o.held.strong); o.held = null; }
+    }
+    o.wait -= dt;
+    if (o.wait > 0) return;
+    var sig = W * (O.s0 + O.sg * o.n), mult = 1, fast = false;
+    if (o.fx.fog > 0) mult *= 1 + 0.7 * O.resist;
+    if (o.fx.gust > 0) mult *= 1 + 0.6 * O.resist;
+    if (o.fx.shake > 0) mult *= 1 + 0.5 * O.resist;
+    if (o.fastN > 0) { o.fastN--; mult *= 1 + 0.5 * O.resist; fast = true; }
+    if (duelT > 120) mult *= 1 + (duelT - 120) * 0.012;
+    var e = gauss() * sig * mult, ae = Math.abs(e), tol = W * 0.014, BW = Math.min(W * 0.52, 240);
+    var storm = o.n + 1 >= o.stormAt;
+    if (ae < tol) { o.combo++; if (o.combo >= 3) o.w = Math.min(o.w + W * 0.025, BW); e = 0; }
+    else {
+      o.combo = 0;
+      if (ae >= o.w - 2) { botFall(); return; }
+      var nw = o.w - ae, fr = nw / o.w;
+      if (fr < 0.3 && Math.random() < Math.min(0.9, (0.3 - fr) / 0.3 * 0.95)) { botFall(); return; }
+      o.w = nw; o.off += e / 2;
+    }
+    o.n++; o.stack.push({ w: o.w, off: o.off, st: storm });
+    if (storm) {
+      o.stormAt = o.n + 6 + Math.floor(Math.random() * 5);
+      if (Math.random() < O.use && ae < W * 0.028) {
+        var m = pickMalus('player'), strong = ae < tol;
+        if (O.hold) o.held = { mal: m, strong: strong, t: 8 }; else botSend(m, strong);
+      }
+    }
+    var sd = sdOn ? Math.min(1.5, 1 + (duelT - 120) * 0.01) : 1;
+    var spd = Math.min(W * 0.9, W * 0.32 + o.n * W * 0.010) * sd, travel = 0.55 * W / spd;
+    if (fast) travel /= 1.7;
+    o.wait = travel + O.react[0] + Math.random() * (O.react[1] - O.react[0]);
+  }
+  function botFall() { opp.dead = true; opp.fallT = 0; thud(0.8); end('win'); }
+  function drawOpp(dt) {
+    if (!opp) return;
+    var o = opp, O = OPPS[o.id], bx = W - 88, by = 124, bw2 = 76, bh = 200;
+    var jx = o.fx.shake > 0 ? Math.sin(tm * 30) * 2.5 : 0;
+    ctx.save();
+    ctx.fillStyle = 'rgba(14,10,26,0.74)'; ctx.strokeStyle = o.hit > 0 ? '#c9a2ff' : O.col; ctx.lineWidth = o.hit > 0 ? 3 : 2;
+    ctx.beginPath(); ctx.roundRect(bx, by, bw2, bh, 14); ctx.fill(); ctx.stroke();
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(portrait(o.id, 4), bx + 14 + jx, by + 6, 48, 48);
+    ctx.fillStyle = '#f4efe6'; ctx.font = '800 12px "Bricolage Grotesque", sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(O.name, bx + bw2 / 2, by + 68);
+    ctx.font = '600 15px "DM Mono", monospace'; ctx.fillStyle = O.col; ctx.fillText(o.n, bx + bw2 / 2, by + 86);
+    var x0 = bx + 6, x1 = bx + bw2 - 6, yb = by + bh - 10, yt = by + 94, sh2 = 4, sc = (x1 - x0) / Math.min(W * 0.52, 240);
+    ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(x0, yb + 1, x1 - x0, 2);
+    var vis = Math.floor((yb - yt) / sh2), st0 = Math.max(0, o.stack.length - vis);
+    if (o.dead) o.fallT += dt;
+    ctx.save(); ctx.beginPath(); ctx.rect(bx + 2, yt - 4, bw2 - 4, yb - yt + 8); ctx.clip();
+    for (var j = st0; j < o.stack.length; j++) {
+      var S = o.stack[j], k2 = j - st0, cx2 = bx + bw2 / 2 + S.off * sc + jx, ww = Math.max(2, S.w * sc), yy = yb - (k2 + 1) * sh2;
+      if (o.dead) { yy += o.fallT * o.fallT * 300 * (0.6 + (k2 % 5) * 0.15); cx2 += (k2 % 2 ? 1 : -1) * o.fallT * 30; }
+      ctx.fillStyle = S.st ? '#9b5cf0' : stoneColor(theme, j + 1).base;
+      ctx.fillRect(cx2 - ww / 2, yy, ww, sh2 - 1);
+    }
+    if (o.fx.fog > 0) { ctx.fillStyle = 'rgba(232,238,250,' + Math.min(0.55, o.fx.fog * 0.3) + ')'; ctx.fillRect(bx, yt - 4, bw2, yb - yt + 8); }
+    if (o.fx.gust > 0) { ctx.strokeStyle = 'rgba(235,245,255,0.6)'; ctx.lineWidth = 1.5; for (var gl2 = 0; gl2 < 4; gl2++) { var gy2 = yt + 10 + gl2 * 22, gx2 = bx + ((tm * 90 + gl2 * 37) % bw2); ctx.beginPath(); ctx.moveTo(gx2, gy2); ctx.lineTo(gx2 - 14, gy2); ctx.stroke(); } }
+    ctx.restore();
+    if (o.held) { ctx.fillStyle = '#c9a2ff'; ctx.font = '800 11px "Bricolage Grotesque", sans-serif'; ctx.fillText('⚡ prête', bx + bw2 / 2, by + bh + 14); }
+    ctx.textAlign = 'start';
+    ctx.restore();
+  }
+  function drawOrbs(dt) {
+    for (var q = orbs.length - 1; q >= 0; q--) {
+      var ob = orbs[q];
+      if (state === 'play' && !paused) ob.t += dt;
+      var p = Math.min(1, ob.t / ob.dur), cxo = (ob.x0 + ob.x1) / 2, cyo = Math.min(ob.y0, ob.y1) - 90;
+      for (var tr = 4; tr >= 0; tr--) {
+        var pp = Math.max(0, p - tr * 0.05), u = 1 - pp;
+        var X = u * u * ob.x0 + 2 * u * pp * cxo + pp * pp * ob.x1, Y = u * u * ob.y0 + 2 * u * pp * cyo + pp * pp * ob.y1;
+        ctx.fillStyle = ob.to === 'opp' ? 'rgba(190,150,255,' + (1 - tr * 0.18) + ')' : 'rgba(255,120,100,' + (1 - tr * 0.18) + ')';
+        ctx.beginPath(); ctx.arc(X, Y, (ob.strong ? 10 : 7) - tr, 0, 7); ctx.fill();
+      }
+      if (p >= 1) { orbs.splice(q, 1); if (state === 'play') ob.fn(); }
+    }
+  }
+  function endDuel(why) {
+    var win = why === 'win', O = OPPS[duelOpp];
+    state = 'over'; overAt = performance.now(); cur = null; windUI();
+    clearEvents(); orbs = []; elTimer.hidden = true; elZenEnd.hidden = true; cEl().hidden = true;
+    if (win) { arpeggio([72, 76, 79, 84, 88, 91, 96], 0.08); buzz([40, 40, 80]); collapse = null; }
+    else { boom(); buzz([60, 40, 90]); addShake(12); slowT = 0.6; collapse = { t: 0.35, n: 0 }; }
+    fadeOutMusic(0.9); want = null;
+    clearTimeout(scoreTimer); scoreTimer = setTimeout(function () { playTrack('score', 0.8); }, 1500);
+    countUp($('final'), score);
+    $('stS').textContent = score; $('stP').textContent = perfects; $('stC').textContent = bestCombo;
+    $('why').textContent = win ? 'Victoire contre ' + O.name + ' !' : O.name + ' l’emporte';
+    var unlockedNow = false;
+    if (win && duelP.beaten.indexOf(duelOpp) < 0) { duelP.beaten.push(duelOpp); saveDuel(); unlockedNow = !!O.next; }
+    $('msg').textContent = win ? (unlockedNow ? '★ ' + OPPS[O.next].name + ' débloqué ★' : '★ Bien joué ★') : O.name + ' : ' + opp.n + ' pierres';
+    $('msg').className = win ? 'rec' : '';
+    $('again').textContent = 'Revanche';
+    var gain = win ? O.reward : 0, before = shop.coins;
+    shop.coins += gain; saveShop();
+    startCoins(gain, before, win, 0, 0);
+    if (!win) elCoinsRow.hidden = true;
+    clearTimeout(readyTimer);
+    elOver.className = 'overlay pre'; elOver.hidden = false;
+    void elOver.offsetWidth;
+    elOver.classList.remove('pre');
+    readyTimer = setTimeout(function () { elOver.classList.add('ready'); }, 1500);
+  }
+  // opponent picker
+  var elDuel = $('duelPanel'), elDuelList = $('duelList');
+  function renderDuel() {
+    elDuelList.innerHTML = '';
+    OPP_ORDER.forEach(function (id, i) {
+      var O = OPPS[id], un = oppUnlocked(id), beat = duelP.beaten.indexOf(id) >= 0;
+      var it = document.createElement('div'); it.className = 'oitem' + (un ? '' : ' locked');
+      var cv = portrait(id, 3), img = document.createElement('canvas'); img.width = cv.width; img.height = cv.height; img.getContext('2d').drawImage(cv, 0, 0); it.appendChild(img);
+      var inf = document.createElement('div'); inf.className = 'oinfo';
+      var nb = document.createElement('b'); nb.textContent = O.name + (beat ? ' ✓' : ''); inf.appendChild(nb);
+      var lv = document.createElement('span'); lv.className = 'olvl'; lv.style.background = O.col; lv.textContent = O.lvl; inf.appendChild(lv);
+      var rw = document.createElement('div'); rw.className = 'orew';
+      if (un) { rw.innerHTML = '<i class="coin-i"></i><span></span>'; rw.lastChild.textContent = 'Victoire : ' + O.reward; }
+      else rw.textContent = '🔒 Bats ' + OPPS[OPP_ORDER[i - 1]].name + ' d’abord';
+      inf.appendChild(rw); it.appendChild(inf);
+      var bt = document.createElement('button'); bt.type = 'button'; bt.className = 'obtn'; bt.textContent = 'Affronter'; bt.disabled = !un;
+      bt.addEventListener('click', function () { duelOpp = id; elDuel.hidden = true; begin('duel'); });
+      it.appendChild(bt); elDuelList.appendChild(it);
+    });
+  }
+  function openDuel() { renderDuel(); elDuel.hidden = false; }
+  $('closeDuel').addEventListener('click', function () { elDuel.hidden = true; });
+
   function end(why) {
+    if (mode === 'duel') { endDuel(why); return; }
     state = 'over'; overAt = performance.now(); cur = null; windUI();
     clearEvents(); elTimer.hidden = true; elZenEnd.hidden = true;
     if (why !== 'zen') { boom(); buzz([60, 40, 90]); addShake(12); slowT = 0.6; collapse = { t: 0.35, n: 0 }; }
@@ -1008,19 +1329,21 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
     readyTimer = setTimeout(function () { elOver.classList.add('ready'); }, 1500);
   }
 
-  var MODELBL = { classic: 'Classique', hard: 'Difficile', time: 'Chrono', zen: 'Zen' };
+  var MODELBL = { classic: 'Classique', hard: 'Difficile', time: 'Chrono', zen: 'Zen', duel: 'Duel' };
   function begin(m) {
     if (m) mode = m;
     elStart.hidden = true; elOver.hidden = true; elScores.hidden = true; clearTimeout(readyTimer);
     elTitle.hidden = true; elScore.hidden = false; elWallet.hidden = true; abortCoins(); cancelCount(); cuTok++;
     var c0 = cam;
     reset(); cam = Math.min(c0, 0); state = 'play';
-    elBestWrap.hidden = mode === 'zen'; elBest.textContent = scores[mode] ? scores[mode].best : '';
+    elBestWrap.hidden = mode === 'zen' || mode === 'duel'; elBest.textContent = scores[mode] ? scores[mode].best : '';
     elModeLbl.hidden = false; elModeLbl.textContent = MODELBL[mode];
-    elModeLbl.className = 'modelbl' + (mode === 'hard' ? ' hard' : mode === 'time' ? ' time' : mode === 'zen' ? ' zen' : '');
-    elTimer.hidden = mode !== 'time'; elZenEnd.hidden = mode !== 'zen'; timerUI();
+    elModeLbl.className = 'modelbl' + (mode === 'hard' ? ' hard' : mode === 'time' ? ' time' : mode === 'zen' ? ' zen' : mode === 'duel' ? ' duel' : '');
+    if (mode === 'duel') elModeLbl.textContent = 'Duel · ' + OPPS[duelOpp].name;
+    document.body.classList.toggle('duel-on', mode === 'duel');
+    elTimer.hidden = mode !== 'time' && mode !== 'duel'; elZenEnd.hidden = mode !== 'zen'; timerUI();
     windUI();
-    clearTimeout(scoreTimer); playTrack(mode);
+    clearTimeout(scoreTimer); playTrack(mode === 'duel' ? 'duel_' + duelOpp : mode);
   }
 
   function toMenu() {
@@ -1029,7 +1352,7 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
     elTitle.hidden = false; elScore.hidden = true; abortCoins(); cancelCount(); cuTok++; collapse = null; leaves = []; cEl().hidden = true;
     elWallet.hidden = false; elWalletN.textContent = shop.coins;
     elBestWrap.hidden = true; elModeLbl.hidden = true; bonusT = 0; showBonus(); windUI();
-    clearEvents(); elTimer.hidden = true; elZenEnd.hidden = true; rainP = [];
+    clearEvents(); elTimer.hidden = true; elZenEnd.hidden = true; rainP = []; opp = null; orbs = []; document.body.classList.remove('duel-on');
     idleStones(); pieces = []; rings = []; cur = null; score = 0;
     cam = camT = idleCam();
     elScore.textContent = '0';
@@ -1070,7 +1393,7 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
   document.addEventListener('pointerdown', tap);
   document.addEventListener('keydown', function (e) {
     if (e.key === 'm' || e.key === 'M') { setCfg('music', !cfg.music); return; }
-    if (paused || !elScores.hidden || !elTP.hidden) return;
+    if (paused || !elScores.hidden || !elTP.hidden || !elDuel.hidden) return;
     if (e.code === 'Space' || e.key === ' ') {
       e.preventDefault();
       if (state === 'play') drop();
@@ -1079,7 +1402,7 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
     }
   });
   var mbs = document.querySelectorAll('.mode-btn');
-  for (var mi = 0; mi < mbs.length; mi++) mbs[mi].addEventListener('click', function () { begin(this.getAttribute('data-mode')); });
+  for (var mi = 0; mi < mbs.length; mi++) mbs[mi].addEventListener('click', function () { var m = this.getAttribute('data-mode'); if (m === 'duel') openDuel(); else begin(m); });
   $('again').addEventListener('click', function () { if (performance.now() - overAt > 300) begin(mode); });
   $('toMenu').addEventListener('click', toMenu);
   elZenEnd.addEventListener('click', function () { if (state === 'play' && mode === 'zen' && !paused) end('zen'); });
@@ -1098,7 +1421,7 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
   // ---- save code: copy / restore the progression ----
   var elSave = $('savePanel'), elBox = $('saveBox'), elSaveMsg = $('saveMsg'), impArm = false, impTimer = null;
   function saveMsg(t) { elSaveMsg.textContent = t; }
-  function makeCode() { return 'CAIRN1-' + btoa(unescape(encodeURIComponent(JSON.stringify({ v: 1, shop: shop, scores: scores, cfg: cfg })))); }
+  function makeCode() { return 'CAIRN1-' + btoa(unescape(encodeURIComponent(JSON.stringify({ v: 1, shop: shop, scores: scores, cfg: cfg, duel: duelP })))); }
   function applyCode(code) {
     var raw = String(code || '').replace(/\s+/g, '');
     if (raw.indexOf('CAIRN1-') !== 0) throw new Error('bad');
@@ -1111,6 +1434,7 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
     applyTheme(themeById(ow.indexOf(d.shop.theme) >= 0 ? d.shop.theme : 'plage'));
     if (d.scores) for (var mk2 in scores) if (d.scores[mk2]) { scores[mk2].best = d.scores[mk2].best | 0; scores[mk2].last = d.scores[mk2].last === null ? null : (d.scores[mk2].last | 0); }
     saveScores(); saveShop();
+    if (d.duel && Array.isArray(d.duel.beaten)) { duelP.beaten = d.duel.beaten.filter(function (id) { return !!OPPS[id]; }); saveDuel(); }
     if (d.cfg) { for (var ck in cfg) if (typeof d.cfg[ck] === 'boolean') cfg[ck] = d.cfg[ck]; saveCfg(); paintSw(); }
     refreshWallet();
   }
@@ -1131,6 +1455,8 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
     impArm = false; btn.textContent = 'Importer';
     try { applyCode(elBox.value); saveMsg('Progression restaurée.'); } catch (e) { saveMsg('Code invalide.'); }
   });
+
+  
 
   // ---- options menu ----
   var sws = elSet.querySelectorAll('.sw');
@@ -1383,7 +1709,14 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
   var GOLDC = { c: ['#fff0a8', '#f5b942', '#c47f16'], glow: 'rgba(255,215,100,0.95)', hi: '#fffbe0', edge: '#fff7c2', icon: 'star', ink: '#6b4300', label: '★ BONUS ×2' };
   var TIMEDC = { c: ['#e6fdff', '#3fc3f0', '#0f6f9c'], glow: 'rgba(90,215,255,0.95)', hi: '#f0feff', edge: '#e8feff', icon: 'clock', ink: '#063047', label: '⏱ CHRONO' };
   var TRAPC = { c: ['#ff9c8a', '#d93a24', '#6e140b'], glow: 'rgba(255,60,40,0.9)', hi: '#ffd9d0', edge: '#ffe0d8', icon: 'cross', ink: '#2a0400', label: '✕ PIÈGE', stripes: true };
-  function fxOf(o) { return o.gold ? GOLDC : o.fx === 'timed' ? TIMEDC : o.fx === 'trap' ? TRAPC : null; }
+  var MAL = {
+    fog: { name: 'Brouillard', icon: 'fog' }, gust: { name: 'Rafale', icon: 'gust' }, fast: { name: 'Pierres rapides', icon: 'fast' },
+    narrow: { name: 'Pierre étroite', icon: 'narrow' }, shake: { name: 'Secousse', icon: 'shake' }
+  };
+  var STORMC = {};
+  for (var mk3 in MAL) STORMC[mk3] = { c: ['#ead6ff', '#9b5cf0', '#3f1a7a'], glow: 'rgba(170,110,255,0.95)', hi: '#f6edff', edge: '#f1e4ff', icon: mk3, ink: '#1e0a40', label: 'ORAGE · ' + MAL[mk3].name.toUpperCase() };
+  function fxOf(o) { if (o.fx === 'storm') return STORMC[o.mal] || STORMC.fog;
+    return o.gold ? GOLDC : o.fx === 'timed' ? TIMEDC : o.fx === 'trap' ? TRAPC : null; }
   function bodyPath(x, y, w, r, kd) {
     ctx.beginPath();
     if (kd === 'round') ctx.ellipse(x + w / 2, y + (h - 2) / 2, w / 2, (h - 2) / 2, 0, 0, 7);
@@ -1398,6 +1731,18 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
     } else if (fx.icon === 'clock') {
       ctx.beginPath(); ctx.arc(cx, cy, s, 0, 7); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, cy - s * 0.65); ctx.moveTo(cx, cy); ctx.lineTo(cx + s * 0.5, cy); ctx.stroke();
+    } else if (fx.icon === 'fog') {
+      for (var fl = -1; fl <= 1; fl++) { ctx.beginPath(); ctx.moveTo(cx - s, cy + fl * s * 0.6); ctx.quadraticCurveTo(cx - s * 0.3, cy + fl * s * 0.6 - s * 0.35, cx, cy + fl * s * 0.6); ctx.quadraticCurveTo(cx + s * 0.3, cy + fl * s * 0.6 + s * 0.35, cx + s, cy + fl * s * 0.6); ctx.stroke(); }
+    } else if (fx.icon === 'gust') {
+      ctx.beginPath(); ctx.moveTo(cx - s, cy - s * 0.45); ctx.lineTo(cx + s * 0.4, cy - s * 0.45); ctx.arc(cx + s * 0.4, cy - s * 0.8, s * 0.35, Math.PI / 2, -Math.PI * 0.6, true);
+      ctx.moveTo(cx - s, cy + s * 0.35); ctx.lineTo(cx + s * 0.6, cy + s * 0.35); ctx.stroke();
+    } else if (fx.icon === 'fast') {
+      for (var fc = 0; fc < 2; fc++) { var ox = cx - s * 0.55 + fc * s * 0.8; ctx.beginPath(); ctx.moveTo(ox - s * 0.35, cy - s * 0.7); ctx.lineTo(ox + s * 0.35, cy); ctx.lineTo(ox - s * 0.35, cy + s * 0.7); ctx.stroke(); }
+    } else if (fx.icon === 'narrow') {
+      ctx.beginPath(); ctx.moveTo(cx - s * 1.1, cy); ctx.lineTo(cx - s * 0.2, cy); ctx.moveTo(cx - s * 0.55, cy - s * 0.45); ctx.lineTo(cx - s * 0.2, cy); ctx.lineTo(cx - s * 0.55, cy + s * 0.45);
+      ctx.moveTo(cx + s * 1.1, cy); ctx.lineTo(cx + s * 0.2, cy); ctx.moveTo(cx + s * 0.55, cy - s * 0.45); ctx.lineTo(cx + s * 0.2, cy); ctx.lineTo(cx + s * 0.55, cy + s * 0.45); ctx.stroke();
+    } else if (fx.icon === 'shake') {
+      ctx.beginPath(); ctx.moveTo(cx - s, cy); for (var zz2 = 1; zz2 <= 5; zz2++) ctx.lineTo(cx - s + zz2 * s * 0.4, cy + (zz2 % 2 ? -1 : 1) * s * 0.6); ctx.stroke();
     } else if (fx.icon === 'cross') {
       ctx.beginPath(); ctx.moveTo(cx - s * 0.75, cy - s * 0.75); ctx.lineTo(cx + s * 0.75, cy + s * 0.75);
       ctx.moveTo(cx + s * 0.75, cy - s * 0.75); ctx.lineTo(cx - s * 0.75, cy + s * 0.75); ctx.stroke();
@@ -1539,6 +1884,13 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
       if (mode === 'hard') {
         wv = updateWind(gdt); updateTide(gdt);
         if (surge) { var sd = Math.min(surge.left, surge.rate * gdt); tide += sd; surge.left -= sd; if (surge.left <= 0.01) surge = null; }
+      } else if (mode === 'duel') {
+        duelT += dt; wv = updateWind(gdt);
+        if (shakeT > 0) { shakeT -= dt; addShake(1.2); }
+        if (!sdOn && duelT >= 120) { sdOn = true; evBanner('⚡ Mort subite', 2.2, 'bad'); jingle(); }
+        var mmn = Math.floor(duelT / 60), ssn = Math.floor(duelT % 60);
+        elTimerN.textContent = mmn + ':' + (ssn < 10 ? '0' : '') + ssn; elTimer.className = 'timer' + (sdOn ? ' low' : '');
+        updateOpp(dt);
       } else if (mode === 'time') {
         wv = updateWind(gdt);
         if (tfreeze > 0) tfreeze = Math.max(0, tfreeze - dt); else tleft -= dt;
@@ -1562,7 +1914,7 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
         if (cur.timed <= 0) { addTime(-2); toast('Trop tard ! −2 s', 'bad'); spawn(); }
       }
       if (cur && state === 'play') {
-        cur.x += (cur.dir * Math.min(W * 1.4, speed * paceCur * (cur.mult || 1) * (speedMulT > 0 ? 2 : 1)) + wv) * gdt;
+        cur.x += (cur.dir * Math.min(W * 1.4, speed * paceCur * (cur.mult || 1) * (speedMulT > 0 ? 2 : 1) * (sdOn && mode === 'duel' ? Math.min(1.5, 1 + (duelT - 120) * 0.01) : 1)) + wv) * gdt;
         if (cur.x > W - cur.w * 0.4) { cur.x = W - cur.w * 0.4; cur.dir = -1; }
         if (cur.x < -cur.w * 0.6) { cur.x = -cur.w * 0.6; cur.dir = 1; }
       }
@@ -1601,8 +1953,9 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
       stone(stones[k].x + sw + wo, stones[k].i * h, stones[k].w, stones[k].i, wr, fxOf(stones[k]), stones[k].k);
     }
     if (cur) {
-      var fe = fogT > 0 ? Math.max(0, Math.min(1, (5.5 - fogT) / 0.6, fogT / 0.6)) : 0;
-      stoneA = 1 - 0.82 * fe; stone(cur.x, cur.i * h, cur.w, cur.i, 0, fxOf(cur), cur.k); stoneA = 1;
+      var fe = fogT > 0 ? Math.max(0, Math.min(1, (fogMax - fogT) / 0.6, fogT / 0.6)) : 0;
+      var jit = shakeT > 0 ? Math.sin(tm * 23) * 6 * Math.min(1, shakeT) : 0;
+      stoneA = 1 - 0.82 * fe; stone(cur.x + jit, cur.i * h, cur.w, cur.i, 0, fxOf(cur), cur.k); stoneA = 1;
       if (fe > 0) {
         for (var cl = 0; cl < 6; cl++) {
           ctx.fillStyle = 'rgba(232,238,250,' + (0.2 * fe) + ')';
@@ -1630,7 +1983,7 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
     }
     ctx.restore();
 
-    if ((mode === 'hard' || mode === 'time') && state !== 'idle') {
+    if (windy() && state !== 'idle') {
       var gap = stones.length * h - tide;
       if (mode === 'hard') drawWater();
       if (mode === 'hard' && state === 'play' && gap < h * 1.6) {
@@ -1646,7 +1999,7 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
       }
     }
 
-    if ((mode === 'hard' || mode === 'time') && state !== 'idle') {   // wind-blown dust, leaves and ash
+    if (windy() && state !== 'idle') {   // wind-blown dust, leaves and ash
       if (state === 'play' && !paused && wind.phase === 'blow' && leaves.length < 70 && Math.random() < wind.env * dt * 40) {
         leaves.push({ x: wind.dir > 0 ? -10 : W + 10, y: Math.random() * H * 0.85, vx: wind.dir * (160 + Math.random() * 280), vy: (Math.random() - 0.4) * 40, r: Math.random() * 6, vr: (Math.random() - 0.5) * 9, s: 2.5 + Math.random() * 3.5 });
       }
@@ -1673,6 +2026,7 @@ button:active:not(:disabled) { transform: scale(0.95); filter: brightness(1.1); 
       ctx.beginPath(); ctx.arc(rg.x, sy(rg.wy) + h / 2, 12 + rg.t * 140, 0, 7); ctx.stroke();
       if (rg.t > 0.45) rings.splice(qr, 1);
     }
+    if (mode === 'duel' && state !== 'idle') { drawOpp(dt); drawOrbs(dt); }
     updateMix();
     if (toastT > 0) { toastT -= dt; if (toastT <= 0) elToast.classList.remove('on'); }
     ctx.restore();
